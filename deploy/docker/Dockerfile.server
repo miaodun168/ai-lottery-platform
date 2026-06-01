@@ -1,0 +1,45 @@
+# ─── Stage 1: builder ─────────────────────────────────────────────────────────
+FROM node:20-alpine AS builder
+
+# Build tools for native addons (bcrypt etc.) + Prisma runtime on Alpine
+RUN apk add --no-cache openssl libc6-compat python3 make g++
+
+WORKDIR /app
+
+COPY package*.json ./
+# Full install (WITH scripts so native addons compile: bcrypt, etc.)
+RUN npm ci
+
+COPY . .
+
+RUN npx prisma generate
+RUN npm run build
+
+# Remove devDependencies after build — production only
+RUN npm prune --omit=dev
+
+# ─── Stage 2: production ──────────────────────────────────────────────────────
+FROM node:20-alpine AS production
+
+# Prisma query engine + bcrypt native addon runtime on Alpine
+RUN apk add --no-cache openssl libc6-compat
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+# Copy compiled output
+COPY --from=builder /app/dist         ./dist
+
+# Copy pruned node_modules (native addons already compiled, devDeps removed)
+COPY --from=builder /app/node_modules ./node_modules
+
+# Copy Prisma schema & migrations (needed for migrate deploy at startup)
+COPY prisma ./prisma
+
+# package.json needed by prisma CLI
+COPY package*.json ./
+
+EXPOSE 3000
+
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/src/main"]

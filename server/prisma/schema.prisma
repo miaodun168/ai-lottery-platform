@@ -1,0 +1,449 @@
+// AI Lottery Platform - Prisma Schema v1.0
+// Database: PostgreSQL 16+
+// ORM: Prisma
+// Charset: UTF8
+// Timezone: Asia/Shanghai
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── 站点表 ───────────────────────────────────────────────────────────────────
+
+model Site {
+  id          BigInt    @id @default(autoincrement())
+  name        String    @db.VarChar(200)
+  code        String?   @unique @db.VarChar(100)
+  domain      String?   @db.VarChar(255)
+  theme_id    BigInt?
+  layout_id   BigInt?
+  status      String?   @db.VarChar(30)
+  description String?
+  created_at  DateTime?
+  updated_at  DateTime?
+
+  @@map("site")
+}
+
+// ─── 采种表 ───────────────────────────────────────────────────────────────────
+
+model LotteryType {
+  id         BigInt    @id @default(autoincrement())
+  code       String?   @db.VarChar(30)
+  name       String?   @db.VarChar(50)
+  draw_time  String?   @db.VarChar(50)
+  status     Boolean?
+  created_at DateTime?
+
+  @@map("lottery_type")
+}
+
+// ─── 香港开奖日历 ─────────────────────────────────────────────────────────────
+
+model HkCalendar {
+  id         BigInt    @id @default(autoincrement())
+  year       Int
+  period_no  String    @db.VarChar(20)
+  draw_date  DateTime  @db.Date
+  draw_time  DateTime
+  status     String    @default("pending") @db.VarChar(20)
+  created_at DateTime?
+  updated_at DateTime?
+
+  @@unique([year, period_no])
+  @@map("hk_calendar")
+}
+
+// ─── 玩法表 ───────────────────────────────────────────────────────────────────
+
+model Play {
+  id           BigInt    @id @default(autoincrement())
+  site_id      BigInt?
+  lottery_type String?   @db.VarChar(20)
+  rule_code    String?   @db.VarChar(20)
+  name         String?   @db.VarChar(200)
+  alias_name   String?   @db.VarChar(200)
+  group_size   Int?      @default(1)
+  status       String?   @db.VarChar(20)
+  sort_no      Int?
+  created_at   DateTime?
+  updated_at   DateTime?
+
+  @@map("play")
+}
+
+// ─── 玩法规则表 ───────────────────────────────────────────────────────────────
+
+model PlayRule {
+  id         BigInt    @id @default(autoincrement())
+  rule_code  String?   @db.VarChar(20)
+  rule_name  String?   @db.VarChar(200)
+  dsl        String?
+  version    String?   @db.VarChar(20)
+  status     Boolean?
+  created_at DateTime?
+
+  @@map("play_rule")
+}
+
+// ─── 预测批次表 ───────────────────────────────────────────────────────────────
+
+model PredictionBatch {
+  id           BigInt    @id @default(autoincrement())
+  site_id      BigInt?
+  lottery_type String?   @db.VarChar(20)
+  year         Int?
+  batch_no     String?   @db.VarChar(100)
+  play_count   Int?
+  record_count Int?
+  is_active    Boolean?
+  created_by   BigInt?
+  created_at   DateTime?
+
+  @@map("prediction_batch")
+}
+
+// ─── 预测记录表 ───────────────────────────────────────────────────────────────
+
+model PredictionRecord {
+  id                 BigInt    @id @default(autoincrement())
+  batch_id           BigInt?
+  site_id            BigInt?
+  lottery_type       String?   @db.VarChar(20)
+  play_id            BigInt?
+  year               Int?
+  period             String?   @db.VarChar(20)
+  group_id           BigInt?
+  prediction_content String?
+  status             String?   @db.VarChar(20)
+  created_at         DateTime?
+
+  @@unique([batch_id, play_id, period], name: "idx_prediction_unique")
+  @@index([play_id, period], name: "idx_prediction_play_period")
+  @@map("prediction_record")
+}
+
+// ─── 开奖结果表 ───────────────────────────────────────────────────────────────
+
+model Result {
+  id           BigInt    @id @default(autoincrement())
+  lottery_type String?   @db.VarChar(20)
+  period       String?   @db.VarChar(20)
+  draw_date    DateTime?
+  input_type   String?   @db.VarChar(20)
+  status       String?   @db.VarChar(20)
+  created_at   DateTime?
+
+  @@index([period], name: "idx_result_period")
+  @@map("result")
+}
+
+// ─── 开奖号码表（seq_no: 1~6=平码 7=特码）────────────────────────────────────
+
+model ResultNumber {
+  id           BigInt    @id @default(autoincrement())
+  result_id    BigInt?
+  seq_no       Int?
+  number_value Int?
+  zodiac       String?   @db.VarChar(20)
+  wave_color   String?   @db.VarChar(20)
+  element      String?   @db.VarChar(20)
+  created_at   DateTime?
+
+  @@map("result_number")
+}
+
+// ─── 开奖属性表 ───────────────────────────────────────────────────────────────
+
+model ResultAttribute {
+  id              BigInt  @id @default(autoincrement())
+  result_id       BigInt?
+  attribute_code  String? @db.VarChar(50)
+  attribute_value String? @db.VarChar(100)
+
+  @@map("result_attribute")
+}
+
+// ─── 结算记录表 ───────────────────────────────────────────────────────────────
+
+model SettlementRecord {
+  id            BigInt    @id @default(autoincrement())
+  site_id       BigInt?
+  lottery_type  String?   @db.VarChar(20)
+  play_id       BigInt?
+  period        String?   @db.VarChar(20)
+  prediction_id BigInt?
+  hit           Boolean?
+  status        String?   @db.VarChar(20)
+  created_at    DateTime?
+
+  @@index([play_id, period], name: "idx_settlement_play_period")
+  @@map("settlement_record")
+}
+
+// ─── 统计汇总表 ───────────────────────────────────────────────────────────────
+
+model StatisticsSummary {
+  id                  BigInt    @id @default(autoincrement())
+  site_id             BigInt?
+  lottery_type        String?   @db.VarChar(20)
+  play_id             BigInt?
+  year                Int?
+  total_count         Int?
+  hit_count           Int?
+  miss_count          Int?
+  hit_rate            Decimal?  @db.Decimal(8, 2)
+  current_hit_streak  Int?
+  current_miss_streak Int?
+  best_hit_streak     Int?
+  best_miss_streak    Int?
+  hidden_count        Int?
+  updating_count      Int?
+  updated_at          DateTime?
+
+  @@index([play_id], name: "idx_statistics_play")
+  @@map("statistics_summary")
+}
+
+// ─── 统计周期表 ───────────────────────────────────────────────────────────────
+
+model StatisticsPeriod {
+  id           BigInt    @id @default(autoincrement())
+  site_id      BigInt?
+  lottery_type String?   @db.VarChar(20)
+  play_id      BigInt?
+  period_type  String?   @db.VarChar(20)
+  hit_count    Int?
+  miss_count   Int?
+  hit_rate     Decimal?  @db.Decimal(8, 2)
+  updated_at   DateTime?
+
+  @@map("statistics_period")
+}
+
+// ─── 属性库表 ─────────────────────────────────────────────────────────────────
+
+model AttributeLibrary {
+  id              BigInt    @id @default(autoincrement())
+  attribute_type  String?   @db.VarChar(50)
+  attribute_name  String?   @db.VarChar(100)
+  attribute_value String?
+  year            Int?
+  is_dynamic      Boolean?
+  created_at      DateTime?
+
+  @@map("attribute_library")
+}
+
+// ─── 广告表 ───────────────────────────────────────────────────────────────────
+
+model Ad {
+  id         BigInt    @id @default(autoincrement())
+  site_id    BigInt?
+  title      String?   @db.VarChar(200)
+  image_url  String?
+  target_url String?
+  sort_no    Int?
+  status     Boolean?
+  created_at DateTime?
+
+  @@map("ad")
+}
+
+// ─── 页面表 ───────────────────────────────────────────────────────────────────
+
+model Page {
+  id              BigInt    @id @default(autoincrement())
+  site_id         BigInt?
+  name            String?   @db.VarChar(200)
+  slug            String?   @db.VarChar(200)
+  page_type       String?   @db.VarChar(50)
+  seo_title       String?   @db.VarChar(255)
+  seo_keywords    String?
+  seo_description String?
+  created_at      DateTime?
+
+  @@map("page")
+}
+
+// ─── 组件表 ───────────────────────────────────────────────────────────────────
+
+model Component {
+  id             BigInt    @id @default(autoincrement())
+  component_code String?   @db.VarChar(100)
+  component_name String?   @db.VarChar(200)
+  component_type String?   @db.VarChar(100)
+  config_json    Json?
+  created_at     DateTime?
+
+  @@map("component")
+}
+
+// ─── 页面组件关联表 ───────────────────────────────────────────────────────────
+
+model PageComponent {
+  id           BigInt @id @default(autoincrement())
+  page_id      BigInt?
+  component_id BigInt?
+  sort_no      Int?
+  config_json  Json?
+
+  @@map("page_component")
+}
+
+// ─── 主题表 ───────────────────────────────────────────────────────────────────
+
+model Theme {
+  id          BigInt    @id @default(autoincrement())
+  theme_code  String?   @db.VarChar(100)
+  theme_name  String?   @db.VarChar(200)
+  config_json Json?
+  created_at  DateTime?
+
+  @@map("theme")
+}
+
+// ─── 布局表 ───────────────────────────────────────────────────────────────────
+
+model Layout {
+  id          BigInt    @id @default(autoincrement())
+  layout_code String?   @db.VarChar(100)
+  layout_name String?   @db.VarChar(200)
+  config_json Json?
+  created_at  DateTime?
+
+  @@map("layout")
+}
+
+// ─── AI任务表 ─────────────────────────────────────────────────────────────────
+
+model AiTask {
+  id           BigInt    @id @default(autoincrement())
+  task_type    String?   @db.VarChar(100)
+  command_text String?
+  status       String?   @db.VarChar(30)
+  result_json  Json?
+  created_at   DateTime?
+  finished_at  DateTime?
+
+  @@index([status], name: "idx_ai_task_status")
+  @@map("ai_task")
+}
+
+// ─── 后台用户表 ───────────────────────────────────────────────────────────────
+
+model AdminUser {
+  id            BigInt    @id @default(autoincrement())
+  username      String?   @db.VarChar(100)
+  password_hash String?   @db.VarChar(255)
+  role          String?   @db.VarChar(50)
+  status        Boolean?
+  created_at    DateTime?
+
+  @@map("admin_user")
+}
+
+// ─── 系统配置表 ───────────────────────────────────────────────────────────────
+
+model SystemSetting {
+  id            BigInt    @id @default(autoincrement())
+  setting_key   String?   @unique @db.VarChar(100)
+  setting_value String?
+  updated_at    DateTime?
+
+  @@map("system_setting")
+}
+
+// ─── 操作日志表 ───────────────────────────────────────────────────────────────
+
+model OperationLog {
+  id          BigInt    @id @default(autoincrement())
+  user_id     BigInt?
+  action      String?   @db.VarChar(200)
+  target_type String?   @db.VarChar(100)
+  target_id   BigInt?
+  detail_json Json?
+  created_at  DateTime?
+
+  @@map("operation_log")
+}
+
+// ─── 页面布局DSL表（Phase 5.1）────────────────────────────────────────────────
+
+model PageLayoutDsl {
+  id          BigInt    @id @default(autoincrement())
+  site_id     BigInt
+  page_type   String    @db.VarChar(50)
+  dsl         Json
+  version     Int       @default(1)
+  is_active   Boolean   @default(true)
+  created_by  BigInt?
+  created_at  DateTime?
+  updated_at  DateTime?
+
+  @@unique([site_id, page_type], name: "idx_page_layout_unique")
+  @@map("page_layout_dsl")
+}
+
+// ─── 站点组件实例表（Phase 5.1）──────────────────────────────────────────────
+
+model SiteComponentInstance {
+  id             BigInt    @id @default(autoincrement())
+  site_id        BigInt
+  page_type      String    @db.VarChar(50)
+  component_type String    @db.VarChar(50)
+  sort           Int       @default(0)
+  visible        Boolean   @default(true)
+  template       String?   @db.VarChar(50)
+  config_json    Json?
+  play_index     Int?
+  ad_index       Int?
+  cat_index      Int?
+  is_fixed       Boolean   @default(false)
+  created_at     DateTime?
+  updated_at     DateTime?
+
+  @@index([site_id, page_type], name: "idx_sci_site_page")
+  @@map("site_component_instance")
+}
+
+// ─── AI 任务执行日志（Phase 6）────────────────────────────────────────────────
+
+model AiTaskLog {
+  id          BigInt    @id @default(autoincrement())
+  task_id     BigInt
+  step        Int
+  action      String?   @db.VarChar(100)
+  status      String?   @db.VarChar(20)
+  message     String?
+  data_before Json?
+  data_after  Json?
+  duration_ms Int?
+  created_at  DateTime?
+
+  @@index([task_id], name: "idx_ai_task_log_task")
+  @@map("ai_task_log")
+}
+
+// ─── AI 命令日志（Phase 6）────────────────────────────────────────────────────
+
+model AiCommandLog {
+  id          BigInt    @id @default(autoincrement())
+  site_id     BigInt?
+  user_id     BigInt?
+  command     String?
+  intent      String?   @db.VarChar(100)
+  dsl         Json?
+  task_id     BigInt?
+  status      String?   @db.VarChar(20)
+  result      Json?
+  created_at  DateTime?
+
+  @@index([site_id], name: "idx_ai_command_log_site")
+  @@map("ai_command_log")
+}

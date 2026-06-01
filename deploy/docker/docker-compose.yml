@@ -1,41 +1,119 @@
 version: "3.9"
 
-services:
-  backend:
-    build:
-      context: ../../backend
-      dockerfile: ../deploy/docker/Dockerfile.backend
-    ports:
-      - "8000:8000"
-    env_file: ../../.env
-    depends_on:
-      - postgres
-      - redis
+# ─── AI Lottery Platform — Production Stack ──────────────────────────────────
+#
+#  Services:
+#    server    NestJS API  (port 3000, internal only — nginx proxies /api/)
+#    frontend  Vue3 Admin SPA served by nginx  (host port 80)
+#    postgres  PostgreSQL 16
+#    redis     Redis 7
+#    minio     MinIO object storage (9000 API / 9001 console)
+#
+#  Quick start:
+#    cp .env.example .env      # fill JWT_SECRET & passwords
+#    docker compose -f deploy/docker/docker-compose.yml up -d --build
+# ─────────────────────────────────────────────────────────────────────────────
 
+services:
+
+  # ── NestJS API ───────────────────────────────────────────────────────────────
+  server:
+    build:
+      context:    ../../server
+      dockerfile: ../deploy/docker/Dockerfile.server
+    container_name: lottery_server
+    restart: unless-stopped
+    environment:
+      NODE_ENV:     production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-lottery}:${POSTGRES_PASSWORD:-lottery_pass}@postgres:5432/${POSTGRES_DB:-lottery_db}
+      REDIS_URL:    redis://redis:6379/0
+      JWT_SECRET:   ${JWT_SECRET:-change-me-in-production}
+      PORT:         3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - lottery_net
+    healthcheck:
+      test:         ["CMD", "wget", "-qO-", "http://localhost:3000/api/v1/lottery/types"]
+      interval:     15s
+      timeout:       5s
+      retries:       6
+      start_period: 40s
+
+  # ── Vue3 Admin SPA (nginx) ────────────────────────────────────────────────────
   frontend:
     build:
-      context: ../../frontend
+      context:    ../../frontend
       dockerfile: ../deploy/docker/Dockerfile.frontend
+    container_name: lottery_frontend
+    restart: unless-stopped
     ports:
-      - "3000:80"
+      - "80:80"
     depends_on:
-      - backend
+      server:
+        condition: service_healthy
+    networks:
+      - lottery_net
 
+  # ── PostgreSQL 16 ─────────────────────────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
+    container_name: lottery_postgres
+    restart: unless-stopped
     environment:
-      POSTGRES_DB: lottery_db
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
+      POSTGRES_DB:       ${POSTGRES_DB:-lottery_db}
+      POSTGRES_USER:     ${POSTGRES_USER:-lottery}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-lottery_pass}
     volumes:
       - pg_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
+    networks:
+      - lottery_net
+    healthcheck:
+      test:     ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-lottery} -d ${POSTGRES_DB:-lottery_db}"]
+      interval:  5s
+      timeout:   3s
+      retries:  10
 
+  # ── Redis 7 ───────────────────────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
+    container_name: lottery_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
     ports:
       - "6379:6379"
+    networks:
+      - lottery_net
+
+  # ── MinIO (S3-compatible object storage) ──────────────────────────────────────
+  minio:
+    image: minio/minio:latest
+    container_name: lottery_minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER:     ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    networks:
+      - lottery_net
+
+networks:
+  lottery_net:
+    driver: bridge
 
 volumes:
   pg_data:
+  redis_data:
+  minio_data:
