@@ -33,6 +33,32 @@ export class SitesService {
     return this.formatSite(site)
   }
 
+  // 按名称复制站点（复制 theme_id/layout_id，生成新 code，状态置 draft）
+  async clone(sourceName: string, operatorId?: bigint) {
+    const src = await this.prisma.site.findFirst({
+      where:   { name: sourceName, status: { not: 'deleted' } },
+      orderBy: { created_at: 'desc' },
+    })
+    if (!src) return null
+
+    const name = `${src.name}_副本_${Date.now()}`
+    const code = await this.generateUniqueCode(name)
+    const site = await this.prisma.site.create({
+      data: {
+        name,
+        code,
+        status:     'draft',
+        theme_id:   src.theme_id,
+        layout_id:  src.layout_id,
+        created_at: new Date(),
+        updated_at: new Date(),
+      },
+    })
+
+    await this.auditLog.log(operatorId ?? null, 'CLONE_SITE', 'site', site.id, { source: src.id.toString(), code })
+    return this.formatSite(site)
+  }
+
   // 为 code 为 NULL 的历史站点补填（可供管理接口调用）
   async backfillCodes() {
     const sites = await this.prisma.site.findMany({ where: { code: null } })

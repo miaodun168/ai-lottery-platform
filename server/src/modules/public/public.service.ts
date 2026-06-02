@@ -42,7 +42,7 @@ export class PublicService {
   }
 
   async getSiteTheme(siteCode: string) {
-    const site = await this.prisma.site.findFirst({ where: { code: siteCode } })
+    const site = await this.prisma.site.findFirst({ where: { code: siteCode, status: 'published' } })
     if (!site) throw new NotFoundException('站点不存在')
     const theme = site.theme_id ? await this.themeEngine.loadFromDb(site.theme_id) : null
     const resolved = theme ?? this.themeEngine.resolve('theme_default')
@@ -50,7 +50,7 @@ export class PublicService {
   }
 
   async getPlaysLazy(siteCode: string, lotteryType: string, page: number, limit: number) {
-    const site = await this.prisma.site.findFirst({ where: { code: siteCode } })
+    const site = await this.prisma.site.findFirst({ where: { code: siteCode, status: 'published' } })
     if (!site) throw new NotFoundException('站点不存在')
 
     const skip = (page - 1) * limit

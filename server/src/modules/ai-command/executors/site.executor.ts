@@ -147,15 +147,11 @@ export class SiteExecutor implements IExecutor {
   // ─── 复制站点 ─────────────────────────────────────────────────────────────
 
   private async cloneSite(dsl: CommandDsl, _taskId: bigint): Promise<ExecutionResult> {
-    const source = await this.sitesService.findAll()
-    const src    = source.find(s => s.name === dsl.params.site_name)
-    if (!src) return this.err(`源站点 "${dsl.params.site_name}" 不存在`)
-
-    const cloned = await this.sitesService.create({
-      name:   `${src.name}_副本_${Date.now()}`,
-      theme:  src.theme_id  ?? undefined,
-      layout: src.layout_id ?? undefined,
-    }, dsl.user_id ? BigInt(dsl.user_id) : null)
+    const cloned = await this.sitesService.clone(
+      dsl.params.site_name ?? '',
+      dsl.user_id ? BigInt(dsl.user_id) : undefined,
+    )
+    if (!cloned) return this.err(`源站点 "${dsl.params.site_name}" 不存在`)
 
     return { success: true, message: `站点已复制，新站点 ID: ${cloned.id}`, data: cloned }
   }

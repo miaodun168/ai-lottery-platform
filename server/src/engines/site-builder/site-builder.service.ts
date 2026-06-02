@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common'
+import { Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../../prisma/prisma.service'
 import { ThemeEngine } from '../theme/theme.engine'
 import { LayoutEngine } from '../layout/layout.engine'
@@ -68,8 +68,7 @@ export class SiteBuilderService {
   // ─── 构建首页 ──────────────────────────────────────────────────────────
 
   async buildHomePage(siteCode: string, lotteryType = 'hk'): Promise<HomepageData> {
-    const site = await this.prisma.site.findFirst({ where: { code: siteCode } })
-    if (!site) return null
+    const site = await this.resolvePublishedSite(siteCode)
 
     // 加载主题（DB → fallback 常量库）
     const theme = site.theme_id ? await this.themeEngine.loadFromDb(site.theme_id) : null
@@ -171,7 +170,7 @@ export class SiteBuilderService {
   // ─── 构建开奖记录页 ────────────────────────────────────────────────────
 
   async buildResultsPage(siteCode: string, lotteryType = 'hk', page = 1, limit = 20): Promise<ResultsPageData> {
-    const site = await this.prisma.site.findFirst({ where: { code: siteCode } })
+    const site = await this.resolvePublishedSite(siteCode)
     const theme = await this.getSiteTheme(site)
     const seo   = await this.buildSeo(site, lotteryType, 'results')
 
@@ -203,7 +202,7 @@ export class SiteBuilderService {
   // ─── 构建玩法详情页 ────────────────────────────────────────────────────
 
   async buildPlayDetailPage(siteCode: string, playId: bigint, lotteryType = 'hk'): Promise<PlayDetailPageData> {
-    const site = await this.prisma.site.findFirst({ where: { code: siteCode } })
+    const site = await this.resolvePublishedSite(siteCode)
     const play = await this.prisma.play.findUnique({ where: { id: playId } })
     if (!play) return null
 
@@ -255,7 +254,7 @@ export class SiteBuilderService {
   // ─── 构建统计页 ────────────────────────────────────────────────────────
 
   async buildStatisticsPage(siteCode: string, lotteryType = 'hk'): Promise<StatisticsPageData> {
-    const site  = await this.prisma.site.findFirst({ where: { code: siteCode } })
+    const site  = await this.resolvePublishedSite(siteCode)
     const theme = await this.getSiteTheme(site)
     const seo   = await this.buildSeo(site, lotteryType, 'statistics')
 
@@ -322,6 +321,14 @@ export class SiteBuilderService {
         })
       }
     }
+  }
+
+  // ─── 私有：按 code 解析已发布站点（未发布/不存在均视为不存在）─────────────
+
+  private async resolvePublishedSite(siteCode: string) {
+    const site = await this.prisma.site.findFirst({ where: { code: siteCode, status: 'published' } })
+    if (!site) throw new NotFoundException(`站点 ${siteCode} 不存在或未发布`)
+    return site
   }
 
   // ─── 私有：加载站点主题 ───────────────────────────────────────────────
