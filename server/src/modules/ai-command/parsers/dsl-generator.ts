@@ -39,7 +39,7 @@ export class DslGenerator {
   describePreview(dsl: CommandDsl): string {
     const p = dsl.params
     const descriptions: Record<string, string> = {
-      site_create:             `将创建站点${p.site_name ? `"${p.site_name}"` : ''}，采种: ${p.lottery_type ?? 'hk'}，主题: ${p.theme ?? '默认'}，${p.play_count ?? 50}个玩法，${p.ad_count ?? 10}个广告`,
+      site_create:             `将创建站点${p.site_name ? `"${p.site_name}"` : ''}，采种: ${(p.lottery_types ?? (p.lottery_type ? [p.lottery_type] : ['hk'])).join('+')}，主题: ${p.theme ?? '默认'}，${p.play_count ?? 50}个玩法，${p.ad_count ?? 10}个广告`,
       site_delete:             `将删除站点${p.site_name ? `"${p.site_name}"` : ''}（高危操作，需确认）`,
       site_clone:              `将复制站点${p.site_name ? `"${p.site_name}"` : ''}`,
       site_publish:            `将发布站点${p.site_name ? `"${p.site_name}"` : ''}`,

@@ -13,7 +13,7 @@ export class AuthService {
     private auditLog:     AuditLogService,
   ) {}
 
-  async login(dto: LoginDto): Promise<{ token: string; user: any }> {
+  async login(dto: LoginDto): Promise<{ access_token: string; user: any }> {
     const user = await this.prisma.adminUser.findFirst({
       where: { username: dto.username },
     })
@@ -32,7 +32,7 @@ export class AuthService {
     await this.auditLog.log(user.id, 'LOGIN', 'admin_user', user.id)
 
     return {
-      token,
+      access_token: token,
       user: { id: user.id.toString(), username: user.username, role: user.role },
     }
   }

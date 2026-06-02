@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common'
 import { AiCommandService } from './ai-command.service'
 import { CommandParser } from './parsers/command-parser'
+import { LlmIntentParser } from './parsers/llm-intent-parser'
 import { DslGenerator } from './parsers/dsl-generator'
 import { EngineRouter } from './executors/engine-router'
 import { TaskQueueService } from './task/task-queue.service'
@@ -41,6 +42,7 @@ const EXECUTORS = [
   ],
   providers: [
     CommandParser,
+    LlmIntentParser,
     DslGenerator,
     TaskQueueService,
     EngineRouter,

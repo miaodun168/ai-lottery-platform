@@ -15,10 +15,12 @@ export class SitesService {
   async create(dto: CreateSiteDto, operatorId?: bigint) {
     const theme  = dto.theme  ? await this.prisma.theme.findFirst({ where: { theme_code: dto.theme } })  : null
     const layout = dto.layout ? await this.prisma.layout.findFirst({ where: { layout_code: dto.layout } }) : null
+    const code   = await this.generateUniqueCode(dto.name, dto.lottery_types)
 
     const site = await this.prisma.site.create({
       data: {
         name:        dto.name,
+        code,
         status:      'draft',
         theme_id:    theme?.id  ?? null,
         layout_id:   layout?.id ?? null,
@@ -27,8 +29,38 @@ export class SitesService {
       },
     })
 
-    await this.auditLog.log(operatorId ?? null, 'CREATE_SITE', 'site', site.id, { name: dto.name })
+    await this.auditLog.log(operatorId ?? null, 'CREATE_SITE', 'site', site.id, { name: dto.name, code })
     return this.formatSite(site)
+  }
+
+  // 为 code 为 NULL 的历史站点补填（可供管理接口调用）
+  async backfillCodes() {
+    const sites = await this.prisma.site.findMany({ where: { code: null } })
+    for (const s of sites) {
+      const code = await this.generateUniqueCode(s.name)
+      await this.prisma.site.update({ where: { id: s.id }, data: { code } })
+    }
+    return { patched: sites.length }
+  }
+
+  private async generateUniqueCode(name: string, lotteryTypes?: string[]): Promise<string> {
+    // ASCII slug（截取名称中的英数字符）
+    const slug = name.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12)
+
+    // 无 ASCII 字符时用采种前缀（hk / mo / hkmo）或通用 site
+    const ltPrefix = lotteryTypes?.map(t => t === 'macau' ? 'mo' : t).join('') ?? ''
+    const prefix   = slug || ltPrefix || 'site'
+
+    for (let i = 0; i < 8; i++) {
+      // 4 位 base36 随机后缀（约 1.68M 空间，碰撞概率极低）
+      const suffix = Math.floor(Math.random() * 36 ** 4).toString(36).padStart(4, '0')
+      const code   = `${prefix}_${suffix}`
+      const exists = await this.prisma.site.findFirst({ where: { code } })
+      if (!exists) return code
+    }
+
+    // 兜底：使用毫秒时间戳（理论上不可能走到这里）
+    return `${prefix}_${Date.now().toString(36)}`
   }
 
   async findAll() {

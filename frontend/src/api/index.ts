@@ -15,7 +15,14 @@ http.interceptors.request.use((config) => {
 
 // ─── Response: unwrap data / redirect on 401 ─────────────────────────────────
 http.interceptors.response.use(
-  (res: AxiosResponse) => res.data,
+  (res: AxiosResponse) => {
+    const body = res.data
+    // NestJS ResponseInterceptor wraps all responses: { code, message, data }
+    if (body && typeof body === 'object' && 'code' in body && 'data' in body) {
+      return body.data
+    }
+    return body
+  },
   (err) => {
     if (err.response?.status === 401) {
       localStorage.removeItem('access_token')

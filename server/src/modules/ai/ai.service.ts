@@ -20,7 +20,7 @@ export class AiService {
   }
 
   async previewCommand(dto: AiCommandDto) {
-    return this.aiCommandService.previewIntents(dto.command, dto.site_id)
+    return await this.aiCommandService.previewIntents(dto.command, dto.site_id)
   }
 
   async getTask(id: bigint) {

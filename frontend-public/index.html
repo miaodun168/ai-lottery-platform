@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#1677FF">
+<title id="page-title">预测站</title>
+<style>
+/* ─── Reset & Base ──────────────────────────────────────────────────── */
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --color-primary:#1677FF;
+  --color-secondary:#0958D9;
+  --color-success:#52C41A;
+  --color-danger:#FF4D4F;
+  --color-warning:#FAAD14;
+  --color-bg:#F5F5F5;
+  --color-surface:#FFFFFF;
+  --color-text:#1F1F1F;
+  --color-text-muted:#8C8C8C;
+  --color-border:#D9D9D9;
+  --font-family:PingFang SC,Microsoft YaHei,sans-serif;
+  --radius-card:8px;
+  --radius-button:6px;
+  --shadow-small:0 2px 4px rgba(0,0,0,.06);
+  --shadow-medium:0 4px 12px rgba(0,0,0,.10);
+}
+html,body{height:100%;font-family:var(--font-family);background:var(--color-bg);color:var(--color-text)}
+body{padding-bottom:64px}
+a{text-decoration:none;color:inherit}
+
+/* ─── Header ────────────────────────────────────────────────────────── */
+.header{
+  background:var(--color-primary);
+  color:#fff;
+  padding:10px 14px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  position:sticky;top:0;z-index:200;
+  box-shadow:0 2px 8px rgba(0,0,0,.15);
+}
+.header-brand{min-width:0}
+.header-title{font-size:17px;font-weight:700;letter-spacing:.5px}
+.header-sub{font-size:11px;opacity:.75;margin-top:1px}
+.lt-switch{display:flex;background:rgba(255,255,255,.18);border-radius:20px;padding:2px;gap:0;flex-shrink:0;margin-left:10px}
+.lt-btn{
+  padding:4px 11px;border-radius:18px;font-size:12px;font-weight:500;
+  border:none;background:transparent;color:rgba(255,255,255,.85);cursor:pointer;
+  transition:background .18s,color .18s;white-space:nowrap;
+}
+.lt-btn.active{background:#fff;color:var(--color-primary);font-weight:700}
+
+/* ─── Result Board ──────────────────────────────────────────────────── */
+.result-board{
+  background:linear-gradient(135deg,var(--color-primary),var(--color-secondary));
+  color:#fff;
+  padding:14px 16px 16px;
+  margin-bottom:10px;
+}
+.result-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.result-period{font-size:13px;opacity:.85}
+.result-badge{font-size:11px;background:rgba(255,255,255,.2);padding:2px 8px;border-radius:10px}
+.result-numbers{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.ball{
+  width:38px;height:38px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;font-weight:700;
+  background:rgba(255,255,255,.22);
+  flex-shrink:0;
+}
+.ball.special{background:rgba(255,215,0,.55)}
+.ball-plus{font-size:20px;opacity:.6;flex-shrink:0}
+.result-waiting{
+  padding:10px 0;
+  display:flex;align-items:center;gap:8px;
+  font-size:14px;opacity:.8;
+}
+.result-waiting::before{
+  content:'';width:8px;height:8px;border-radius:50%;
+  background:#fff;opacity:.7;
+  animation:blink 1.4s ease-in-out infinite;
+  flex-shrink:0;
+}
+@keyframes blink{0%,100%{opacity:.3}50%{opacity:1}}
+
+/* ─── Latest Results Ribbon ─────────────────────────────────────────── */
+.ribbon{
+  display:flex;align-items:center;gap:12px;
+  padding:8px 14px;
+  background:var(--color-surface);
+  border-bottom:1px solid var(--color-border);
+  overflow-x:auto;
+  scrollbar-width:none;
+  font-size:12px;
+}
+.ribbon::-webkit-scrollbar{display:none}
+.ribbon-label{color:var(--color-text-muted);flex-shrink:0;font-weight:500}
+.ribbon-item{
+  display:flex;gap:3px;align-items:center;flex-shrink:0;
+}
+.rball{
+  width:22px;height:22px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:700;color:#fff;
+  background:var(--color-primary);
+  flex-shrink:0;
+}
+.rball.sp{background:var(--color-warning)}
+
+/* ─── Section title ─────────────────────────────────────────────────── */
+.section-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 14px 6px;
+}
+.section-title{font-size:15px;font-weight:700;color:var(--color-text)}
+.section-total{font-size:12px;color:var(--color-text-muted)}
+
+/* ─── Play Grid ─────────────────────────────────────────────────────── */
+.play-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:9px;
+  padding:0 10px;
+}
+.play-card{
+  background:var(--color-surface);
+  border-radius:var(--radius-card);
+  padding:12px 11px 10px;
+  box-shadow:var(--shadow-small);
+  cursor:pointer;
+  transition:transform .12s,box-shadow .12s;
+  position:relative;overflow:hidden;
+}
+.play-card:active{transform:scale(.97);box-shadow:none}
+.play-card-accent{
+  position:absolute;top:0;left:0;right:0;height:3px;
+  background:var(--color-primary);
+  border-radius:var(--radius-card) var(--radius-card) 0 0;
+}
+.play-name{
+  font-size:13px;font-weight:700;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  margin-bottom:4px;color:var(--color-text);
+}
+.play-alias{
+  font-size:11px;color:var(--color-text-muted);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  margin-bottom:6px;min-height:14px;
+}
+.hit-bar{height:3px;background:#F0F0F0;border-radius:2px;overflow:hidden;margin-bottom:4px}
+.hit-fill{height:100%;border-radius:2px;background:var(--color-success);transition:width .4s ease}
+.hit-fill.med{background:var(--color-warning)}
+.hit-fill.low{background:var(--color-danger)}
+.hit-label{font-size:11px;font-weight:600;color:var(--color-success)}
+.hit-label.med{color:var(--color-warning)}
+.hit-label.low{color:var(--color-danger)}
+.hit-none{font-size:11px;color:var(--color-text-muted)}
+.play-period{font-size:10px;color:var(--color-text-muted);margin-top:4px}
+
+/* ─── Skeleton ───────────────────────────────────────────────────────── */
+.skel{
+  background:linear-gradient(90deg,#f0f0f0 25%,#e8e8e8 50%,#f0f0f0 75%);
+  background-size:200% 100%;
+  animation:shimmer 1.3s infinite;
+  border-radius:var(--radius-card);
+}
+@keyframes shimmer{to{background-position:-200% 0}}
+.skel-card{height:96px}
+
+/* ─── Load more / Spinner ────────────────────────────────────────────── */
+#load-sentinel{height:1px}
+.spinner-wrap{text-align:center;padding:14px;color:var(--color-text-muted);font-size:13px}
+.spinner{
+  display:inline-block;width:18px;height:18px;
+  border:2px solid var(--color-border);
+  border-top-color:var(--color-primary);
+  border-radius:50%;
+  animation:spin .7s linear infinite;
+  vertical-align:middle;margin-right:6px;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ─── Empty / Error ─────────────────────────────────────────────────── */
+.empty{
+  grid-column:1/-1;
+  text-align:center;padding:36px 20px;
+  color:var(--color-text-muted);font-size:14px;
+}
+.empty-icon{font-size:36px;margin-bottom:8px}
+
+/* ─── Bottom Nav ─────────────────────────────────────────────────────── */
+.bottom-nav{
+  position:fixed;bottom:0;left:0;right:0;
+  height:56px;
+  background:var(--color-surface);
+  border-top:1px solid var(--color-border);
+  display:flex;
+  box-shadow:0 -2px 8px rgba(0,0,0,.06);
+  z-index:200;
+}
+.nav-item{
+  flex:1;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:2px;font-size:11px;color:var(--color-text-muted);
+  cursor:pointer;transition:color .15s;
+}
+.nav-item.active{color:var(--color-primary)}
+.nav-icon{font-size:21px;line-height:1}
+
+/* ─── Safe area (iPhone notch) ───────────────────────────────────────── */
+@supports(padding-bottom:env(safe-area-inset-bottom)){
+  .bottom-nav{padding-bottom:env(safe-area-inset-bottom)}
+  body{padding-bottom:calc(64px + env(safe-area-inset-bottom))}
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <div class="header-brand">
+    <div class="header-title" id="site-title">加载中…</div>
+    <div class="header-sub" id="site-sub"></div>
+  </div>
+  <div class="lt-switch" id="lt-switch" style="display:none"></div>
+</header>
+
+<!-- Result board -->
+<div class="result-board" id="result-board">
+  <div class="result-header">
+    <span class="result-period" id="result-period">正在加载开奖数据…</span>
+    <span class="result-badge" id="result-badge"></span>
+  </div>
+  <div class="result-numbers" id="result-numbers">
+    <div class="result-waiting">等待开奖</div>
+  </div>
+</div>
+
+<!-- Recent results ribbon -->
+<div class="ribbon" id="ribbon" style="display:none">
+  <span class="ribbon-label">往期</span>
+  <div id="ribbon-items" style="display:flex;gap:10px;align-items:center"></div>
+</div>
+
+<!-- Play list -->
+<div class="section-header">
+  <span class="section-title">🎯 今日预测</span>
+  <span class="section-total" id="play-total"></span>
+</div>
+<div class="play-grid" id="play-grid">
+  <div class="skel skel-card"></div>
+  <div class="skel skel-card"></div>
+  <div class="skel skel-card"></div>
+  <div class="skel skel-card"></div>
+</div>
+
+<!-- Infinite scroll sentinel -->
+<div id="load-sentinel"></div>
+<div id="spinner" class="spinner-wrap" style="display:none">
+  <span class="spinner"></span>加载中…
+</div>
+
+<!-- Bottom nav -->
+<nav class="bottom-nav">
+  <div class="nav-item active" id="nav-home">
+    <span class="nav-icon">🏠</span>首页
+  </div>
+  <div class="nav-item" id="nav-results" onclick="gotoPage('results')">
+    <span class="nav-icon">🎲</span>开奖
+  </div>
+  <div class="nav-item" id="nav-statistics" onclick="gotoPage('statistics')">
+    <span class="nav-icon">📊</span>统计
+  </div>
+  <div class="nav-item" id="nav-favorites">
+    <span class="nav-icon">⭐</span>收藏
+  </div>
+</nav>
+
+<script>
+// ─── Config ──────────────────────────────────────────────────────────────────
+const API = '/api/v1/public'
+
+function getSiteCode() {
+  const p = new URLSearchParams(location.search)
+  if (p.get('site')) return p.get('site')
+  // Subdomain pattern: hksite.example.com → hksite (optional production pattern)
+  const parts = location.hostname.split('.')
+  if (parts.length >= 3 && parts[0] !== 'www') return parts[0]
+  return null
+}
+
+const siteCode = getSiteCode()
+let lotteryType = new URLSearchParams(location.search).get('lt') || 'hk'
+let playPage  = 1
+let playTotal = 0
+let playDone  = false
+let loading   = false
+let lazyInit  = 10
+let lazyBatch = 5
+
+// ─── Boot ─────────────────────────────────────────────────────────────────────
+async function init() {
+  if (!siteCode) {
+    document.body.innerHTML = `
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;
+                  height:100vh;font-family:sans-serif;color:#8C8C8C;text-align:center;padding:20px">
+        <div style="font-size:48px;margin-bottom:16px">🎴</div>
+        <div style="font-size:16px;font-weight:bold;color:#1F1F1F;margin-bottom:8px">未指定站点</div>
+        <div style="font-size:13px">请在 URL 中添加 <code style="background:#f5f5f5;padding:2px 6px;border-radius:4px">?site=站点code</code></div>
+        <div style="font-size:12px;margin-top:6px;color:#bbb">例如：index.html?site=caifuge_e65f</div>
+      </div>`
+    return
+  }
+  try {
+    const home = await api(`/${siteCode}/home?lottery_type=${lotteryType}`)
+    applyTheme(home.theme)
+    renderHeader(home)
+    renderLtSwitch(home.components?.lottery_switch)
+    renderResultBoard(home.components?.result_board)
+    setSeo(home.seo, home.site)
+    lazyInit  = home.layout?.lazy_initial  ?? 10
+    lazyBatch = home.layout?.lazy_batch    ?? 5
+    await loadPlays(true)
+    loadRecentResults()
+    setupInfiniteScroll()
+  } catch (e) {
+    document.getElementById('play-grid').innerHTML =
+      `<div class="empty"><div class="empty-icon">⚠️</div>加载失败，请刷新重试<br><small style="font-size:11px;margin-top:4px;display:block">${e.message}</small></div>`
+  }
+}
+
+// ─── Theme ────────────────────────────────────────────────────────────────────
+function applyTheme(theme) {
+  if (!theme?.css_vars) return
+  const s = document.documentElement.style
+  Object.entries(theme.css_vars).forEach(([k,v]) => s.setProperty(k, v))
+  // Update theme-color meta
+  const m = document.querySelector('meta[name="theme-color"]')
+  if (m) m.content = theme.colors?.primary ?? '#1677FF'
+}
+
+// ─── SEO ──────────────────────────────────────────────────────────────────────
+function setSeo(seo, site) {
+  const t = seo?.title || site?.name || '预测站'
+  document.title = t
+  document.getElementById('page-title').textContent = t
+  meta('description', seo?.description)
+  meta('keywords', seo?.keywords)
+}
+function meta(name, content) {
+  if (!content) return
+  let el = document.querySelector(`meta[name="${name}"]`)
+  if (!el) { el = document.createElement('meta'); el.name = name; document.head.appendChild(el) }
+  el.content = content
+}
+
+// ─── Header ───────────────────────────────────────────────────────────────────
+function renderHeader(home) {
+  const logo = home.components?.logo || {}
+  document.getElementById('site-title').textContent = logo.title  || home.site?.name || '预测站'
+  document.getElementById('site-sub').textContent   = logo.subtitle || ''
+}
+
+// ─── Lottery switch ───────────────────────────────────────────────────────────
+function renderLtSwitch(sw) {
+  if (!sw?.options?.length || sw.options.length < 2) return
+  const el = document.getElementById('lt-switch')
+  el.style.display = 'flex'
+  el.innerHTML = sw.options.map(lt =>
+    `<button class="lt-btn${lt===lotteryType?' active':''}" onclick="switchLt('${lt}')">${ltName(lt)}</button>`
+  ).join('')
+}
+const ltName = lt => ({hk:'香港',macau:'澳门',mo:'澳门'}[lt] ?? lt)
+
+function switchLt(lt) {
+  if (lt === lotteryType) return
+  lotteryType = lt
+  playPage = 1; playDone = false
+  document.querySelectorAll('.lt-btn').forEach(b =>
+    b.classList.toggle('active', b.textContent === ltName(lt))
+  )
+  document.getElementById('play-grid').innerHTML = '<div class="skel skel-card"></div>'.repeat(4)
+  document.getElementById('play-total').textContent = ''
+  document.getElementById('result-period').textContent = '切换采种中…'
+  document.getElementById('result-numbers').innerHTML = '<div class="result-waiting">等待开奖</div>'
+  document.getElementById('ribbon').style.display = 'none'
+  // Reload
+  api(`/${siteCode}/home?lottery_type=${lt}`)
+    .then(h => { renderResultBoard(h.components?.result_board); loadRecentResults() })
+    .catch(() => {})
+  loadPlays(true)
+}
+
+// ─── Result board ─────────────────────────────────────────────────────────────
+function renderResultBoard(board) {
+  if (!board) return
+  const periodEl  = document.getElementById('result-period')
+  const badgeEl   = document.getElementById('result-badge')
+  const numbersEl = document.getElementById('result-numbers')
+
+  if (!board.current_result) {
+    periodEl.textContent  = board.lottery_type === 'hk' ? '香港六合彩' : '澳门六合彩'
+    badgeEl.textContent   = '等待开奖'
+    numbersEl.innerHTML   = '<div class="result-waiting">今日开奖结果等待中</div>'
+    return
+  }
+
+  const r    = board.current_result
+  const nums = r.numbers  ?? []
+  const sp   = r.special_number ?? r.special ?? '?'
+
+  periodEl.textContent = `第 ${r.period ?? '—'} 期`
+  badgeEl.textContent  = r.draw_date ? r.draw_date.slice(0,10) : '最新开奖'
+
+  numbersEl.innerHTML = [
+    ...nums.map(n => `<div class="ball">${String(n).padStart(2,'0')}</div>`),
+    `<span class="ball-plus">+</span>`,
+    `<div class="ball special">${String(sp).padStart(2,'0')}</div>`,
+  ].join('')
+}
+
+// ─── Recent results ribbon ────────────────────────────────────────────────────
+async function loadRecentResults() {
+  try {
+    const data = await api(`/${siteCode}/results?lottery_type=${lotteryType}&page=1&limit=3`)
+    const items = data.items ?? data.results ?? []
+    if (!items.length) return
+    const ribbon = document.getElementById('ribbon')
+    const wrap   = document.getElementById('ribbon-items')
+    wrap.innerHTML = items.map(r => {
+      const nums = (r.numbers ?? []).slice(0,3)
+      const sp   = r.special_number ?? r.special ?? '?'
+      return `<div class="ribbon-item">
+        <span style="font-size:10px;color:#8C8C8C;margin-right:2px">${String(r.period??'').slice(-4)}</span>
+        ${nums.map(n=>`<div class="rball">${String(n).padStart(2,'0')}</div>`).join('')}
+        <span style="font-size:10px;color:#8C8C8C">…</span>
+        <div class="rball sp">${String(sp).padStart(2,'0')}</div>
+      </div>`
+    }).join('<span style="color:#D9D9D9">│</span>')
+    ribbon.style.display = 'flex'
+  } catch (_) {}
+}
+
+// ─── Play cards ───────────────────────────────────────────────────────────────
+async function loadPlays(reset = false) {
+  if (loading || playDone) return
+  loading = true
+
+  const limit = reset ? lazyInit : lazyBatch
+  if (reset) { playPage = 1 }
+
+  document.getElementById('spinner').style.display = 'block'
+
+  try {
+    const data  = await api(`/${siteCode}/plays?lottery_type=${lotteryType}&page=${playPage}&limit=${limit}`)
+    const items = (data.items ?? []).filter(p => !p.hidden)
+    playTotal   = data.total ?? 0
+
+    const grid = document.getElementById('play-grid')
+    if (reset) grid.innerHTML = ''
+
+    if (!items.length && reset) {
+      grid.innerHTML = `<div class="empty"><div class="empty-icon">🔮</div>暂无玩法数据<br><small>请先在后台创建玩法</small></div>`
+      playDone = true
+    } else {
+      items.forEach(p => grid.appendChild(buildCard(p)))
+      const loaded = (playPage - 1) * limit + items.length
+      document.getElementById('play-total').textContent =
+        playTotal > 0 ? `共 ${playTotal} 个` : ''
+      if (items.length < limit || loaded >= playTotal) playDone = true
+      else playPage++
+    }
+  } catch (e) {
+    if (reset) {
+      document.getElementById('play-grid').innerHTML =
+        `<div class="empty"><div class="empty-icon">⚠️</div>玩法加载失败</div>`
+    }
+  } finally {
+    loading = false
+    document.getElementById('spinner').style.display = 'none'
+  }
+}
+
+function buildCard(p) {
+  const card = document.createElement('div')
+  card.className = 'play-card'
+
+  const hr  = p.hit_rate != null ? Number(p.hit_rate) : null
+  const cls = hr == null ? '' : hr >= 70 ? '' : hr >= 50 ? ' med' : ' low'
+  const fillColor = hr == null ? '#E8E8E8' : ''
+
+  card.innerHTML = `
+    <div class="play-card-accent"></div>
+    <div class="play-name" title="${p.name}">${p.name}</div>
+    <div class="play-alias">${p.alias_name || '&nbsp;'}</div>
+    <div class="hit-bar">
+      <div class="hit-fill${cls}" style="width:${hr ?? 0}%${fillColor ? ';background:'+fillColor : ''}"></div>
+    </div>
+    ${hr != null
+      ? `<div class="hit-label${cls}">命中率 ${hr.toFixed(0)}%</div>`
+      : `<div class="hit-none">暂无统计</div>`}
+    ${p.period ? `<div class="play-period">第${p.period}期</div>` : ''}
+  `
+  card.onclick = () => {
+    location.href = `play.html?site=${siteCode}&play=${p.play_id}&lt=${lotteryType}`
+  }
+  return card
+}
+
+// ─── Infinite scroll ─────────────────────────────────────────────────────────
+function setupInfiniteScroll() {
+  const sentinel = document.getElementById('load-sentinel')
+  if (!('IntersectionObserver' in window)) return
+  new IntersectionObserver(entries => {
+    if (entries[0].isIntersecting && !playDone && !loading) loadPlays()
+  }, { rootMargin: '200px' }).observe(sentinel)
+}
+
+// ─── Navigation ───────────────────────────────────────────────────────────────
+function gotoPage(page) {
+  const map = {
+    results:    `results.html?site=${siteCode}&lt=${lotteryType}`,
+    statistics: `statistics.html?site=${siteCode}&lt=${lotteryType}`,
+  }
+  if (map[page]) location.href = map[page]
+}
+
+// ─── Util ─────────────────────────────────────────────────────────────────────
+async function api(path) {
+  const r = await fetch(API + path)
+  if (!r.ok) throw new Error(`HTTP ${r.status}`)
+  const j = await r.json()
+  if (j.code !== undefined && j.code !== 0) throw new Error(j.message || 'API Error')
+  return j.data ?? j
+}
+
+// ─── Start ────────────────────────────────────────────────────────────────────
+init()
+</script>
+</body>
+</html>

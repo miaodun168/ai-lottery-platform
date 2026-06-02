@@ -5,6 +5,7 @@ version: "3.9"
 #  Services:
 #    server    NestJS API  (port 3000, internal only — nginx proxies /api/)
 #    frontend  Vue3 Admin SPA served by nginx  (host port 80)
+#    public    Public site frontend — nginx  (host port 8080)
 #    postgres  PostgreSQL 16
 #    redis     Redis 7
 #    minio     MinIO object storage (9000 API / 9001 console)
@@ -52,6 +53,21 @@ services:
     restart: unless-stopped
     ports:
       - "80:80"
+    depends_on:
+      server:
+        condition: service_healthy
+    networks:
+      - lottery_net
+
+  # ── Public Site Frontend (nginx) ─────────────────────────────────────────────
+  public:
+    build:
+      context:    ../../frontend-public
+      dockerfile: Dockerfile
+    container_name: lottery_public
+    restart: unless-stopped
+    ports:
+      - "8080:80"
     depends_on:
       server:
         condition: service_healthy

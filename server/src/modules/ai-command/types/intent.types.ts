@@ -57,7 +57,8 @@ export interface ParsedIntent {
 export interface IntentParams {
   site_id?:       string
   site_name?:     string
-  lottery_type?:  string    // 'hk' | 'mo' | 'mix'
+  lottery_type?:  string    // 'hk' | 'macau' | 'mix'
+  lottery_types?: string[]  // LLM 多采种输出（site_create 展开前）
   theme?:         string    // theme_code
   layout_code?:   string
   play_name?:     string
@@ -71,7 +72,7 @@ export interface IntentParams {
   page_name?:     string
   period?:        string
   numbers?:       number[]
-  ad_count?:      number | string  // 可以是 "50%" 或数字
+  ad_count?:      number | string  // 可以是 "-50%" 或数字
   ad_interval?:   number
   cat_positions?: number[]
   position?:      string    // 'top' | 'bottom'
@@ -85,5 +86,8 @@ export interface IntentParams {
 // ─── 高危操作列表 ──────────────────────────────────────────────────────────
 
 export const RISKY_ACTIONS: IntentAction[] = [
-  'site_delete', 'delete_play', 'remove_all_ads', 'delete_page', 'delete_result',
+  'site_create', 'site_delete',
+  'batch_create_play', 'delete_play',
+  'remove_all_ads',
+  'delete_page', 'delete_result',
 ]
